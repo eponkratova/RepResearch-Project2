@@ -1,0 +1,95 @@
+---
+title: "Analysis of Natural Disasters and Related Losses"
+author: "EPonkratova"
+date: "May 21, 2016"
+output: html_document
+tool: RStudio
+---
+
+
+## Synopsis
+
+The "Analysis of Natural Disasters and Related Losses" presents a 3000 foot view on major natural disasters in the United States. It summarizes the basics of major storms and weather events i.e. rare, unusual, weather phenomena that generate media attention and other significant meteorological events that are tracked by the U.S. National Oceanic and Atmospheric Administration's (NOAA). The original dataset by NOAA contains information on economic output (property damage) and past disaster losses (loss of life and injuries) collected between 1950 and November 2011.
+
+## Data Processing
+
+During the first step, the original dataset, provided as a compressed bz2 file was downloaded from the Internet. 
+
+The database cointains of 902,297 observations and 37 variables. For the purpose of this analysis, we would consider only four variables: 
+1. FATALITIES or number of deaths caused by natural disasters.
+2. INJURIES or number of injuries caused by natural disasters.
+3. PROPDMG or property damage estimated as actual dollar amounts.
+4. EVTYPE i.e. storms and other significant weather phenomena, rare, unusual, weather phenomena that generate media attention, such as snow flurries in South Florida or the San Diego coastal area; and other significant meteorological events, such as record maximum or minimum temperatures or precipitation that occur in connection with another event. 
+
+Due to the different standards in data processing, it could be observed that some of Events are in upper and lower case letters. As a typeface is not recognized by R during the aggregation stage, the values in the EVNTYPE col were changed to uppercase.
+
+```{r}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "file.csv.bz2")
+original <- read.csv("file.csv.bz2", header= TRUE, nrows = 1)
+str(original)
+weather <- read.csv("file.csv.bz2", header= TRUE, stringsAsFactors = FALSE)[ ,c('EVTYPE', 'FATALITIES', 'INJURIES','PROPDMG' )]
+dim(weather)
+str(weather)
+library(dplyr)
+weather_case <- mutate_each(weather, funs(toupper))
+cols.num <- c('FATALITIES', 'INJURIES','PROPDMG');
+weather_case[cols.num] <- sapply(weather_case[cols.num],as.numeric)
+sapply(weather_case, class)
+str(weather_case)
+```
+
+
+## Results
+
+In order to detect which types of events are most harmful with respect to population health?
+Across the United States, which types of events have the greatest economic consequences?
+When arranged by total number of fatalities, tornado was the most common cause of death, followed by exessive heat and flash flood.
+Event type | Fatalities
+------------- | -------------
+Tornado | 5,633
+Excesive heat | 1903
+Flash flood | 978
+Heat | 937
+Lighning | 816
+
+Tornado was also the leading cause of natural disaster injuries in the USA, followed by marine thunderstorm wind and flood.
+Event type | Fatalities
+------------- | -------------
+Tornado | 91,346
+TSTM Wind | 6,957
+Flood | 8,789
+Exessive heat | 6,525
+Lightning | 5,230
+
+Tornado was also the leading cause of natural disaster property damage in the USA. The total  losses by top five catastrophes reached $7.75 million.
+Event type | Fatalities
+------------- | -------------
+Tornado | 3,212,258.2
+Flash flood | 1,420,124.6
+TSTM Wind | 1,335,995.6
+Flood | 899,938.5
+Thunderstorm wind | 876,844.2
+
+```{r echo=TRUE}
+weather_aggregated <- setNames(aggregate(weather_case$FATALITIES ~ EVTYPE, data = weather_case, sum, na.rm=TRUE),c("Type", "Calc"))
+sorted <- tail(weather_aggregated[order(weather_aggregated$Calc),])
+aggregated_matrix <- t(sorted[-1])
+colnames(aggregated_matrix) <- sorted[,1]
+weather_aggregated_injuries <- setNames(aggregate(weather_case$INJURIES ~ EVTYPE, data = weather_case, sum, na.rm=TRUE),c("Type2", "Calc2"))
+sorted_injuries <- tail(weather_aggregated_injuries[order(weather_aggregated_injuries$Calc2),])
+aggregated_matrix_injuries <- t(sorted_injuries[-1])
+colnames(aggregated_matrix_injuries) <- sorted_injuries[,1]
+weather_aggregated_damage <- setNames(aggregate(weather_case$PROPDMG ~ EVTYPE, data = weather_case, sum, na.rm=TRUE),c("Type3", "Calc3"))
+sorted_damage <- tail(weather_aggregated_damage[order(weather_aggregated_damage$Calc3),])
+aggregated_matrix_damage <- t(sorted_damage[-1])
+colnames(aggregated_matrix_damage) <- sorted_damage[,1]
+sorted
+sorted_injuries
+sorted_damage
+par(mfrow = c(1, 3))
+par(cex = 0.55)
+plot1 <- barplot(aggregated_matrix, las=2, main="Top 6 Natural Disasters by Total Number of Fatalities, 1950-2011", xlab = "Type", ylab = "Fatalities", cex=0.8, cex.axis=0.8, col="lightgrey", border="lightgrey")
+plot2 <- barplot(aggregated_matrix_injuries, las=2, main="Top 6 Natural Disasters by Total Number of Injured, 1950-2011", xlab = "Type", ylab = "Injuries", cex=0.8, cex.axis=0.8, col="lightgrey", border="lightgrey")
+plot3 <- barplot(aggregated_matrix_damage, las=2, main="Top 6 Natural Disasters by Property damage, 1950-2011", xlab = "Type", ylab = "USD", cex=0.8, cex.axis=0.8, col="lightgrey", border="lightgrey")
+```
+
